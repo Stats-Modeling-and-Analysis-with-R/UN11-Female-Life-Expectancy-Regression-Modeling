@@ -1,0 +1,552 @@
+---
+title: "Final Homework Assignment"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+library(alr4)
+library(skimr)
+library(ggplot2)
+library(corrplot)
+library(gridExtra)
+library(dplyr)
+library(stargazer)
+library(lmtest)
+library(sandwich)
+library(ggplot2)
+library(ggeffects)
+
+
+data(UN11)
+
+dim(UN11)
+head(UN11)
+summary(UN11)
+skim(UN11)
+```
+
+# 1. Histograms
+Task: Create histograms of each continuous variable in the UN11 dataset.
+- Inspect the histograms and decide if any variables should be transformed (e.g., log transformation).
+
+The following are the histograms of the continuous variables in UN11
+```{r}
+hist1 <- ggplot(UN11, aes(x = fertility)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot Fertility Rate",
+       x = "Fertility Rate",
+       y = "Density") +
+  theme_minimal()
+
+hist2 <- ggplot(UN11, aes(x = ppgdp)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot GDP Per Capita",
+       x = "PPGDP",
+       y = "Density") +
+  theme_minimal()
+
+hist3 <- ggplot(UN11, aes(x = lifeExpF)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot Female Life Expectancy",
+       x = "Female Life Expectancy",
+       y = "Density") +
+  theme_minimal()
+
+hist4 <- ggplot(UN11, aes(x = pctUrban)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot Percent Urban",
+       x = "Percent Urban",
+       y = "Density") +
+  theme_minimal()
+
+grid.arrange(hist1, hist2, hist3, hist4, ncol = 2)
+```
+
+Below I also display the kernel density plot to get a better view of the normality of the continues variables
+```{r}
+kern1 <- ggplot(UN11, aes(x = fertility)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot Fertility Rate",
+       x = "Fertility Rate",
+       y = "Density") +
+  theme_minimal()
+
+kern2 <- ggplot(UN11, aes(x = ppgdp)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot GDP Per Capita",
+       x = "PPGDP",
+       y = "Density") +
+  theme_minimal()
+
+kern3 <- ggplot(UN11, aes(x = lifeExpF)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot Female Life Expectancy",
+       x = "Female Life Expectancy",
+       y = "Density") +
+  theme_minimal()
+
+kern4 <- ggplot(UN11, aes(x = pctUrban)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot Percent Urban",
+       x = "Percent Urban",
+       y = "Density") +
+  theme_minimal()
+
+grid.arrange(kern1, kern2, kern3, kern4, ncol = 2)
+```
+
+
+After reviewing the histograms and kernel density plots, it seems fertility rate, ppgdp, and female life expectancy all have a long tail. fertility and ppdgp skew heavily right and life expectancy heavily left. So I will take the log transformations of these variables.
+
+We can also see from the Scatterplot matrix that female life expectancy and ppgdp do not have a linear relationship. It seems more curved. Life expectancy of females, percent urban, and fertility seem to be linearly related.
+```{r}
+pairs(UN11[, c("lifeExpF", "fertility", "ppgdp", "pctUrban")],
+      main = "Scatterplot Matrix of UN11",
+      pch = 19, col = "blue")
+```
+
+
+I will now make a log transformation of the continuous variables and plot their histograms and kernel density graphs to see how they compare.
+```{r}
+UN11$fertility_log <- log(UN11$fertility)
+UN11$ppgdp_log <- log(UN11$ppgdp)
+UN11$lifeExpF_log <- log(UN11$lifeExpF)
+UN11$pctUrban_log <- log(UN11$pctUrban)
+
+log_hist1 <- ggplot(UN11, aes(x = fertility_log)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot Fertility Rate (Log)",
+       x = "Fertility Rate (Log)",
+       y = "Density") +
+  theme_minimal()
+
+log_hist2 <- ggplot(UN11, aes(x = ppgdp_log)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot GDP Per Capita (Log)",
+       x = "PPGDP (Log)",
+       y = "Density") +
+  theme_minimal()
+
+log_hist3 <- ggplot(UN11, aes(x = lifeExpF_log)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot Female Life Expectancy (Log)",
+       x = "Female Life Expectancy (Log)",
+       y = "Density") +
+  theme_minimal()
+
+log_hist4 <- ggplot(UN11, aes(x = pctUrban_log)) +
+  geom_histogram(aes(y = after_stat(density)), position = "identity", bins = 30, alpha = 0.25, color="black") +
+  labs(title = "Histogram Plot Percent Urban (Log)",
+       x = "Percent Urban (Log)",
+       y = "Density") +
+  theme_minimal()
+
+grid.arrange(log_hist1, log_hist2, log_hist3, log_hist4, ncol = 2)
+```
+
+
+```{r}
+log_kern1 <- ggplot(UN11, aes(x = fertility_log)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot Fertility Rate (Log)",
+       x = "Fertility Rate (Log)",
+       y = "Density") +
+  theme_minimal()
+
+log_kern2 <- ggplot(UN11, aes(x = ppgdp_log)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot GDP Per Capita (Log)",
+       x = "PPGDP (Log)",
+       y = "Density") +
+  theme_minimal()
+
+log_kern3 <- ggplot(UN11, aes(x = lifeExpF_log)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot Female Life Expectancy (Log)",
+       x = "Female Life Expectancy (Log)",
+       y = "Density") +
+  theme_minimal()
+
+log_kern4 <- ggplot(UN11, aes(x = pctUrban_log)) +
+  geom_density() +
+  labs(title = "Kernal Density Plot Percent Urban (Log)",
+       x = "Percent Urban (Log)",
+       y = "Density") +
+  theme_minimal()
+
+grid.arrange(log_kern1, log_kern2, log_kern3, log_kern4, ncol = 2)
+```
+
+After performing a log transformation, it seems fertility rate ppgdp are more normal. Female life expectancy is still heavily skewed but maybe less so. Percent urban seems to have less normal after the transformation.
+Lets see how these values are linearly related to one another with another scatterplot matrix.
+
+```{r}
+pairs(UN11[, c("lifeExpF", "lifeExpF_log", "fertility",  "ppgdp",  "pctUrban")],
+      main = "Scatterplot Matrix of UN11 and Continuous Vars",
+      pch = 19, col = "blue")
+
+pairs(UN11[, c("lifeExpF", "lifeExpF_log", "fertility_log", "ppgdp_log",  "pctUrban_log")],
+      main = "Scatterplot Matrix of UN11 and Continuous Vars (Log)",
+      pch = 19, col = "blue")
+
+```
+
+After viewing the scatterplot above, it seems the female life expectancy and log(female life expectancy) have the same trends with non-transformed IVs.
+It seems female life expectancy and log(female life expectancy) have better linear relationship to log(ppgdp) compared to ppgdp. log(life expectancy), log(fertility), and log(percent urban) seem to not change much linear relationship wise with log(female life expectancy).
+
+After this analysis, I think I will make the following model: female life expectancy + log(ppgdp) + other IVs
+# 2. ANOVA Analysis
+Task: Run an ANOVA with lifeExpF as the dependent variable (DV) and group as the independent variable (IV).
+
+
+```{r}
+
+group_means <-UN11 %>%
+  group_by(group) %>%
+  summarise(mean = mean(lifeExpF),
+            var = var(lifeExpF),
+            sd = sd(lifeExpF),
+            n=n())
+
+print(group_means)
+
+anova_result <- aov(lifeExpF ~ as.factor(group), data = UN11)
+print(summary(anova_result))
+```
+
+After conducting the ANOVA, we get a p-value less than 0.01 which indicates we can reject the null hypothesis that there are no differences in the average female life expectancy between groups.
+
+- Conduct a posthoc comparison using either Bonferroni or Tukey HSD.
+```{r}
+print("====================== TukeyHSD")
+TukeyHSD(anova_result)
+
+print("====================== Bonferroni")
+pairwise.t.test(UN11$lifeExpF, UN11$group, p.adjust.method = "bonferroni")
+```
+
+- Interpret the results of the ANOVA and posthoc comparisons.
+After conducting both the TukeyHSD and Bonferroni tests:
+  - groups "other" and "oecd" have p-value less than 0.01. Thus, we reject the null that "other" and "oecd" have the same average female life expectancy
+  - groups "oecd" and "africa" have a p-value less than 0.01. Thus, we reject the null that "oecd" and "africa" have the same average female life expectancy
+  - groups "other" and "africa" have a p-value less than 0.01. Thus, we reject the null that "other" and "africa" have the same average female life expectancy
+
+# 3. Correlations
+Task: Run Pearson R correlations between the continuous variables
+- Create a correlation matrix between the continuous variables in the dataset
+```{r}
+cor_data <- cor(UN11[, c("lifeExpF", "fertility", "ppgdp", "pctUrban")], method="pearson", use="complete.obs")
+cor_data
+
+corrplot(cor_data, method = 'color', addCoef.col = "black")
+```
+
+- Discuss what you see in the matrix including direction and strength of the bivariate correlation.
+  - From observing the correlation matrix I see that there are no continuous variables that are perfectly correlated with each other. This is good to know as it means perfect multi collinearity is not something I need to consider to reduce bias in my final model.
+  - The IVs ppgdp and percent urban in relation to female life expectancy are all at a good range, between 0.50 - 0.70, for correlation. This indicates the IVs have a good linear relationship with female life expectancy, thus OLS models should perform well.
+  - It seems ppgdp and percent urbanization are positively correlated with female life expectancy.
+  - I see that fertility and female life expectancy are highly negatively correlated with one another. The pearson R is >0.80 which is considered high.
+    - One assumption could be giving birth can lead to complications so having more kids could increase chances of things going wrong. Things going wrong could be more likely in less wealthy and urban places thus reducing female life expectancy.
+  - These relationships make sense to me. Typically places with higher GDP per capita are wealthier and more urban. Typically, this means people are more well off and more likely to live longer.
+  - I am also aware that wealthier people and more developed countries are likely to have fewer kids, these correlations follow that trend
+
+# 4. OLS Model Estimation
+Task: Create hypotheses for the continuous IVs and estimate an OLS model with lifeExpF as the DV and fertility, pctUrban, ppgdp as the IVs (or their transformed versions).
+
+Instructions:
+- Create hypotheses for the effect of fertility, pctUrban, and ppgdp on lifeExpF.
+  - fertility
+    - HO: Fertility rate has no effect on the average female life expectancy of a country
+    - HA: High fertility rates have a negative effect on average female life expectancy
+  - pctUrban
+    - HO: Percent urban has no effect on the average female life expectancy of a country
+    - HA: High percent urban rates have a positive effect on average female life expectancy
+  - ppgdp
+    - HO: GDP per capita has no effect on the average female life expectancy of a country
+    - HA: High GDP per capita has a positive effect on average female life expectancy
+
+- Decide if region and group should both be included in the model.
+
+First I will do an ANOVA check on region since I haven't done that one yet.
+
+```{r}
+group_means <-UN11 %>%
+  group_by(region) %>%
+  summarise(mean = mean(lifeExpF),
+            var = var(lifeExpF),
+            sd = sd(lifeExpF),
+            n=n())
+
+print(group_means)
+
+anova_result <- aov(lifeExpF ~ as.factor(region), data = UN11)
+print(summary(anova_result))
+
+print("====================== TukeyHSD")
+TukeyHSD(anova_result)
+
+print("====================== Bonferroni")
+pairwise.t.test(UN11$lifeExpF, UN11$region, p.adjust.method = "bonferroni")
+```
+
+The ANOVA gives a p-value which is less than 0.01 which means we reject the null the that all regions have the same average female life expectancy.
+
+The TukeyHSD and Bonferroni results give more mixed answers. It shows that some regions, particularly those compared with Africa, have very low p-values. While many others do not.
+
+Also, the various region combinations would more IVs to our model since they are categorical, not ordinal. Including all these values would add more model complexity and potentially bias since many of the region values do not have low P-values.
+
+Because of this, I will not include region in my OLS model.
+
+I looked  up group for the UN11 dataset and found this: "a factor with levels oecd for countries that are members of the OECD, the Organization for Economic Co-operation and"
+
+Group shows more significant results with few values. So I will include group in my model. I dont have full context regarding which countries are in oecd vs other vs africa but the ANOVA results seemed promising. Doing a quick google search of OECD countries shows many of them are quite developed and prosperous (US, Netherlands, Canada, Japan). I know many countries in Africa are classified as developing, especially around 2009-2011 (the time of the dataset). Other would then include many Asian which can have mixed bag of countries at various development status. I think the intuition of countries of various development statuses affecting female mortality is reasonable..
+
+It seems worth adding because of the somewhat distinct nature of the groups from my initial research/assumptions plus the significant results of the ANOVa tests. I will make one model with group and one without and go from there.
+
+- Estimate an OLS model using the lm function.
+
+```{r}
+lm1 <- lm(lifeExpF ~ fertility + ppgdp_log + pctUrban, data = UN11 )
+lm2 <- lm(lifeExpF ~ group + fertility + ppgdp_log + pctUrban, data = UN11 )
+
+stargazer(lm1, lm2,  digits = 2, type = "text", column.labels = c("Model 1", "Model 2 (Groups)"))
+```
+
+
+- Review OLS assumptions (e.g., linearity, normality, homoscedasticity, multicollinearity, outliers). Explain what you see and if any are violated.
+```{r}
+par(mfrow=c(2,3)); plot(lm1, which=1:6)
+par(mfrow=c(2,3)); plot(lm2, which=1:6)
+```
+
+
+OLS Assumption Checks:
+- linearity
+From the Residual vs Fitted graph, for both lm1 and lm2, we can see that our line is mostly straight and following the dotted line. Since our residuals are mostly horizontal, I believe the linearity assumption has not been violated.
+
+- normality
+The Q-Q plots for both lm1 and lm2 show the standardized residuals away from the dotted line at the most extreme values. This may indicate our model is violating the normality assumption. We can use the shapiro-wilks test to double check.
+
+```{r}
+lm1_residuals <- residuals(lm1)
+shapiro.test(lm1_residuals)
+
+lm2_residuals <- residuals(lm2)
+shapiro.test(lm2_residuals)
+```
+
+The shapiro-wilks test H0: Our residuals are normally distributed. HA: Our residuals are not normally distributed.
+
+Both p-values for lm1 and lm2 are less than 0.01 thus reject the null. Both models violate the normality assumption. We may have to do some log transformations to account for this violation.
+
+- homoscedasticity
+The Scale Location plot shows a fairly straight line that indicates homoscedasticity. There is a slight trend line on the right hand side. Lets double check with a test.
+
+```{r}
+bptest(lm1)
+bptest(lm2)
+```
+
+From running the Breusch-Pagan test our H0: Variance is Constant, HA: Variance is not constant
+- lm1 has a p-value > 0.05 thus we fail to reject the null.
+- lm2 has a p-value < 0.01 thus we reject the null that it has constant variance.
+- We can use robust standard errors to account for this violation
+
+- multicollinearity
+
+From the correlation matrix in the previous section, we see that no continuous variable was perfectly correlated with another variable. Female Life Expectancy and Fertility were highly negatively correlated. This may be a concern. Lets double check with the vif command.
+
+```{r}
+vif(lm1)
+print("=================")
+vif(lm2)
+```
+
+From above, we can see none of the IVs had a high value (greater than 5) thus I believe we are fine regarding the multicollinearity assumption and do not have to modify our data further.
+
+- outliers
+Based on the Cook's distance graph, we see there are a few values greater than (4/119 = 0.02) which indicates outliers we want to consider removing as it may skew our analysis of the average female life expectancy.
+
+- Make necessary changes if any assumptions are violated and reestimate the model.
+Based on the results and violations above, I have decided to improve my second model, lm2. I have chosen this because it had a better R2 and adjusted R2 compared to model 1. The groups we also considered significant and I do believe the groups those countries encapsulate have some relationship with female life expectancy.
+
+First I will try taking the log of fertility since it is also skewed right.
+```{r}
+#
+new_lm2 <- lm(lifeExpF ~ group + fertility_log + ppgdp_log + pctUrban, data = UN11 )
+new_lm2_robost <- coeftest(new_lm2, vcov = vcovHC(new_lm2, type="HC3"))
+
+stargazer(new_lm2, new_lm2_robost,  digits = 2, type = "text")
+
+par(mfrow=c(2,3)); plot(new_lm2, which=1:6)
+
+bptest(new_lm2)
+lm2_new_residuals <- residuals(new_lm2)
+shapiro.test(lm2_new_residuals)
+```
+
+The p-values for the Breusch Pagan and Shapiro tests are better than before but we still reject the null. I will now also try removing outliers. In this case I think its appropriate as we care mainly about the average life expectancy. We saw that female life expectancy had several large outliers, so we will try to remove them with Cooks distance
+
+```{r}
+# Compute Cook's distance
+cooksD <- cooks.distance(new_lm2)
+
+influential <- cooksD[(cooksD > (1 * mean(cooksD, na.rm = TRUE)))]
+names_of_influential <- names(influential)
+influential
+
+df <- UN11[names_of_influential,]
+UN11_slim <- UN11 %>% anti_join(df)
+
+dim(UN11_slim)
+```
+
+Now we will rebuild our model 2 again with the outliers removed and log(fertility)
+```{r}
+lm3 <- lm(lifeExpF ~ group + fertility_log + ppgdp_log + pctUrban, data = UN11_slim )
+lm3_robost <- coeftest(new_lm2, vcov = vcovHC(new_lm2, type="HC3"))
+
+stargazer(lm3, lm3_robost,  digits = 2, type = "text")
+
+par(mfrow=c(2,3)); plot(lm3, which=1:6)
+
+bptest(lm3)
+
+lm3_residuals <- residuals(lm3)
+shapiro.test(lm3_residuals)
+```
+
+For this new model, lm3:
+
+- linearity
+  - Most values are on the Q-Q plot and outliers don't stray too far from the dotted line so I do not think the linearity assumption has been voilated.
+- normality
+  - The Shapiro Wilks test is p-value > 0.1 thus we fail to reject the null. The normality assumption is no longer voilated
+- homoscedasticity
+  - The Breusch-Pagan p-value is now > 0.01 but less 0.05. This this assumption may still be voilated depending how strict we set the cutoff. Looking at the Scale-Location plot, the line is still fairly straight so I will not reject the null of H0: constant variance
+- multicollinearity
+```{r}
+cor_data_slim <- cor(UN11_slim[, c("lifeExpF", "fertility", "ppgdp", "pctUrban")], method="pearson", use="complete.obs")
+cor_data_slim
+
+corrplot(cor_data_slim, method = 'color', addCoef.col = "black")
+```
+
+I do not think the multicollinearity assumption has been violated but fertility and female life expectancy are much more corelated now.
+
+- outliers
+  - We have removed 40 outliers based on Cook's distance. This is fairly high, ~20%. The model R2 score and F score is much better
+
+- With your "final model", create a regression table using stargazer or jtools with appropriately named variables (i.e. do not use the names directly from the dataset)
+
+```{r}
+final <- lm3
+stargazer(lm1, lm2, final,  digits = 2, type = "text", column.labels = c("Model 1", "Model 2 (Groups)", "Final Model"))
+
+# recalculate lm1 and lm2 based on UN11_slim
+
+lm1_slim <- lm(lifeExpF ~ fertility + ppgdp_log + pctUrban, data = UN11_slim)
+lm2_slim <- lm(lifeExpF ~ group + fertility + ppgdp_log + pctUrban, data = UN11_slim)
+stargazer(lm1_slim, lm2_slim, final,  digits = 2, type = "text", column.labels = c("Model 1 Slim", "Model 2 (Groups) Slim", "Final Model"))
+
+
+```
+
+# 5. Model Interpretation
+Task: Fully interpret the final OLS model results.
+
+- Discuss beta weights and any significance found in the model.
+  - Beta Weights:
+    - groupother, groupafrica, fertility_log are negatively correlated with female life expectancy. The magnitude of groupafrica and fertility_log have the largest effect.
+    - ppgdp_log and pctUrban are positively correlated with female life expectancy.
+  - Significance: All IVs in the final model are significant with a p-value less than 0.05
+    - groupother, groupafrica, fertility_log and ppgdp_log had p-values less than 0.01
+    - pctUrban had a p-value less than 0.05
+- Discuss the model fit statistics and what this tells us about your final model.
+  - R2: The final model had an R2 score of 0.93. This means our final model explains about 93% of the variance of life expectancy. This is 18% better than lm1 R2 and 12% better than lm2 R2
+  - Adjusted R2: The final model had an Adjusted R2 score of 0.93. This means our final model explains about 93% of the variance of life expectancy even with a deduction for additional IVs in the model. This is 19% better than lm1 R2 and 13% better than lm2 R2. Even though the final model is more complex compared to lm1, it still performed better.
+  -   If we apply lm1 and lm2 to the outlier adjusted UN11 model (UN11_slim) we see the R2 and Adjusted R2 scored are about 1-3% points away from the final model.
+  - F Stat:
+    - The final model had an F Statistic of 403.46 and it's p-value is < 0.01 so its significant. The F score is about double the score of the original lm1 and lm2 model and very close to the refitted lm1 and lm2 model
+- Present a clear and concise interpretation of the results.
+  - Group Other, Group Africa, log(Fertiltity Rate), log(GDP Per Capita), and Percentage Urban all have a significant relationship with the Average Female Life Expectancy based on the UN11 data (excluded outliers). Group Other, Group Africa, log(Fertiltity Rate) have a negative relationship, with Group Africa, log(Fertiltity Rate) having the largest magnitude.
+-
+# 6. Predicted Value Plots
+Task: Create predicted value plots for all significant predictor variables from your final model using ggpredict from the ggeffects package.
+
+- Ensure the plots have appropriate colors, names on the axes, and confidence intervals.
+
+```{r}
+#non_int<-ggpredict(final, terms=c("group", "fertility_log", "ppgdp_log", "pctUrban"))
+
+non_int<-ggpredict(final, terms="fertility_log")
+
+plot_fert <- ggplot(non_int, aes(x = x, y = predicted, color = factor(group), group = factor(group))) +
+  geom_line() +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.05) +
+  labs(title = "Predicted Female Life Expectancy with Log (Fertility Rate)and Confidence Intervals from Final Model",
+       x = "Log (Fertility Rate)",
+       y = "Predicted Female Life Expectancy",
+       color = "95% CI") +
+  scale_color_manual(values = c("1" = "red"),
+                     labels = c("1" = "Log (Fertility Rate)")) +
+  theme_minimal()
+
+non_int<-ggpredict(final, terms="group")
+
+plot_group <- ggplot(non_int, aes(x = x, y = predicted, color = factor(group), group = factor(group))) +
+  geom_line() +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.05) +
+  labs(title = "Predicted Female Life Expectancy with Group and Confidence Intervals from Final Model",
+       x = "Group",
+       y = "Predicted Female Life Expectancy",
+       color = "95% CI") +
+  scale_color_manual(values = c("1" = "blue"),
+                     labels = c("1" = "Group")) +
+  theme_minimal()
+
+non_int<-ggpredict(final, terms="ppgdp_log")
+
+plot_gdp <- ggplot(non_int, aes(x = x, y = predicted, color = factor(group), group = factor(group))) +
+  geom_line() +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.05) +
+  labs(title = "Predicted Female Life Expectancy with log(GDP Per Capita) and Confidence Intervals from Final Model",
+       x = "log(GDP Per Capita)",
+       y = "Predicted Female Life Expectancy",
+       color = "95% CI") +
+  scale_color_manual(values = c("1" = "green"),
+                     labels = c("1" = "log(GDP Per Capita)")) +
+  theme_minimal()
+
+non_int<-ggpredict(final, terms="pctUrban")
+
+plot_urban <- ggplot(non_int, aes(x = x, y = predicted, color = factor(group), group = factor(group))) +
+  geom_line() +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.05) +
+  labs(title = "Predicted Female Life Expectancy with Percent Urban and Confidence Intervals from Final Model",
+       x = "Percent Urban",
+       y = "Predicted Female Life Expectancy",
+       color = "95% CI") +
+  scale_color_manual(values = c("1" = "yellow"),
+                     labels = c("1" = "Percent Urban")) +
+  theme_minimal()
+
+grid.arrange(plot_fert, plot_group, plot_gdp, plot_urban, ncol = 2)
+
+```
+
+- Describe what the plots reveal about the relationships between the variables.
+
+The plots above show what the expected (95% CI) female life expectancy would be with a change in IV (holding all other values equal).
+For example, going from 50-75% urban would lead to female life expectancy on average increasing from ~75 (low end) to ~77 (high end) with 95% confidence.
+
+# 7. Draw Conclusions
+- Task: Finish the assignment by drawing conclusions about what is influential in life expectancy based on your interpretation of your OLS model and predicted value plots.
+
+Based on my model:
+- I believe wealthier more urban locations have a positive impact on average female life expectancy. I assume this is because urban locations tend to be on average wealthier and have more resources on average. More wealth and resources I believe can lead to better outcomes for females and allow them to on average live longer.
+- I believe high fertility rates have a negative impact on female life expectancy. I assume part of this is because giving birth is risky, and thus having multiple children can have a chance of harming a women or reducing their quality of life. I believe my model had a high association with fertility and female life expectancy because I think fertility reflects other underlying additional connections. For example,  wealthier countries women have less children on average compared to poorer countries. So the high fertility rates may be a connection to lower socio economic regions. Also having multiple children in poorer areas may make quality of life more difficult for a women (raising kids is hard especially when poor) thus negatively impacting their life expectancy.
+- I think this assumption as backed up by the group field which shows life expectancy going down as you go from oecd countries (generally wealthy) to other (I believe this is a mixed bag of countries, particularly in Asia, with various socioeconomic conditions) and African countries (which are still developing in many areas in 2009-2011).
